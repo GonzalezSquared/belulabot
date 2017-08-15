@@ -8,7 +8,7 @@ def cartesian_product_for_lists(list_1, list_2):
     list2 = ['a', 'b']
     A = cartesian_product_for_lists(list1, list2)
 
-    A is [(1, 'a'), (1, 'b'), (2, 'a'), (2, 'b')]1
+    A is [(1, 'a'), (1, 'b'), (2, 'a'), (2, 'b')]
     '''
     cartesian_product = []
     for i in list_1:
@@ -16,7 +16,7 @@ def cartesian_product_for_lists(list_1, list_2):
             cartesian_product.append((i, j))
     return cartesian_product
 
-class deck_of_cards:
+class Deck_of_cards:
     '''
     A deck_of_cards object represents a usual spanish deck (four pints: oro, copa, espada and basto)
     and 12 numbers for every card. These are represented by tuples of the form ('x', y) where 'x' is
@@ -36,7 +36,7 @@ class deck_of_cards:
         self.current_deck.remove(card)
         return card
 
-class player:
+class Player:
     '''
     This class represents a player of lulo.
     To-do:
@@ -64,6 +64,12 @@ class player:
         self.recieve_card(deck)
         self.recieve_card(deck)
         self.recieve_card(deck)
+    
+    def recieve_money(self, amount_of_chips):
+        '''
+        This function lets the player recieved the money he has won. It does so IN PLACE.
+        '''
+        self.chips += amount_of_chips
 
     def bet(self, betting_amount):
         '''
@@ -108,7 +114,7 @@ class player:
             raise ValueError('The new lulo status should be a boolean!')
         self.lulo_status = new_lulo_status
 
-class global_round:
+class Global_round:
     '''
     This is the auxiliar functions for the global round of each game.
     '''
@@ -152,6 +158,8 @@ class global_round:
     '''
     Questions:
         - How to deal with the bets of each player? (even in a bot-ish way).
+          For now, let's do it randomly. We'll think of a way later on.
+        - How do we deal with changing cards.
     '''
 
     def deal_hands(self):
@@ -160,3 +168,59 @@ class global_round:
         '''
         for _player in self.list_of_players:
             _player.recieve_hand(self.deck)
+
+def play_global_round(list_of_players, current_lulo_price):
+    global_round_ = Global_round(list_of_players, current_lulo_price)
+
+    # The round starts, the money is collected from past lulos and the hands
+    # are dealt.
+    global_round_.collect_and_distribute_money()
+    global_round_.deal_hands()
+
+    # We let players fold, depending on what they got in their hands. Temporarily,
+    # we do it randomly.
+    list_of_not_folded_players = []
+    for player in list_of_players:
+        if random.uniform(0, 1) >= 0.5:
+            player.folded_status = True
+        else:
+            list_of_not_folded_players.append(player)
+    
+    # If there's only one player, he wins it all.
+    if len(list_of_not_folded_players) == 1:
+        player = list_of_not_folded_players[0]
+        player.recieve_money(global_round_.bets[0] 
+                             + global_round_.bets[1]
+                             + global_round_.bets[2])
+    
+    # We find the index of the dealer (which can be optimized by putting this on
+    # the same loop as the one before).
+    index_of_dealer = None
+    for player in list_of_players:
+        if player.is_dealer():
+            index_of_dealer = list_of_players.index(player)
+    # We find the closest active player (to the right of the dealer) for it to be the
+    # right hand.
+
+    for index in range(index_of_dealer, index_of_dealer + len(list_of_players)):
+        index = index % len(list_of_players)
+        if list_of_players[index] in list_of_not_folded_players:
+            list_of_players[index].right_to_dealer_status = True
+            break
+    
+    # Now we know who's starting the game. Now we start with the head.
+
+
+class Local_round:
+    def __init__(self, _round_type):
+        self.round_type = _round_type
+        self.winners = set([])
+    
+
+def game():
+    '''
+    This function is the real deal, it starts a game of Lulo.
+    '''
+
+
+        
