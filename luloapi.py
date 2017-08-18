@@ -81,6 +81,16 @@ class Player:
         self.chips -= betting_amount
         return betting_amount
 
+    def play_card(self, card):
+        '''
+        This function returns said card and removes it from the hand.
+        '''
+        if card in self.hand:
+            self.hand.remove(card)
+            return card
+        else:
+            raise ValueError('card must be in hand!')
+
     def is_dealer(self):
         '''
         This function returns a boolean, it returns whether the player is the dealer or not.
@@ -170,12 +180,12 @@ class Global_round:
             _player.recieve_hand(self.deck)
 
 def play_global_round(list_of_players, current_lulo_price):
-    global_round_ = Global_round(list_of_players, current_lulo_price)
+    global_round = Global_round(list_of_players, current_lulo_price)
 
     # The round starts, the money is collected from past lulos and the hands
     # are dealt.
-    global_round_.collect_and_distribute_money()
-    global_round_.deal_hands()
+    global_round.collect_and_distribute_money()
+    global_round.deal_hands()
 
     # We let players fold, depending on what they got in their hands. Temporarily,
     # we do it randomly.
@@ -189,9 +199,9 @@ def play_global_round(list_of_players, current_lulo_price):
     # If there's only one player, he wins it all.
     if len(list_of_not_folded_players) == 1:
         player = list_of_not_folded_players[0]
-        player.recieve_money(global_round_.bets[0] 
-                             + global_round_.bets[1]
-                             + global_round_.bets[2])
+        player.recieve_money(global_round.bets[0] 
+                             + global_round.bets[1]
+                             + global_round.bets[2])
     
     # We find the index of the dealer (which can be optimized by putting this on
     # the same loop as the one before).
@@ -206,9 +216,16 @@ def play_global_round(list_of_players, current_lulo_price):
         index = index % len(list_of_players)
         if list_of_players[index] in list_of_not_folded_players:
             list_of_players[index].right_to_dealer_status = True
+            right_to_dealer_player = list_of_players[index]
             break
     
     # Now we know who's starting the game. Now we start with the head.
+    list_of_played_cards_head = []
+    
+    # Temporarily, the hand chooses his first card at random.
+    first_card_head = right_to_dealer_player.play_card(
+                        random.choice(right_to_dealer_player.hand))
+    # Ask Oscar how could I build a \leq relation for cards.
 
 
 class Local_round:
