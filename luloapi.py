@@ -61,17 +61,24 @@ class DeckOfCards:
 class Player:
     '''
     This class represents a player of lulo.
+
+    It can be initialized with a type (either None (i.e. random), human or bot).
+    The type is a tuple (x,y) where x is a string which states 'random', 'human'
+    or 'bot' and the second is the bot object if it x == 'bot'. Maybe we could
+    pair the second one with the human object.
     To-do:
         - Implement the memory stuff
     '''
-    def __init__(self):
-        self.chips = 5000
+    def __init__(self, _type=(None, None), _chips=5000):
+        self.chips = _chips
         self.dealer_status = False
-        self.right_to_dealer_status = False
-        self.lulo_status = False
         self.folded_status = False # How do we let the players (bots) choose?
-        self.memory_of_past_cards = []
         self.hand = []
+        self.lulo_status = False
+        self.memory_of_past_cards = []
+        self.name = None
+        self.right_to_dealer_status = False
+        self.type = _type
 
     def recieve_card(self, deck):
         '''
@@ -103,15 +110,28 @@ class Player:
         self.chips -= betting_amount
         return betting_amount
 
-    def play_card(self, card):
+    def play_card(self, global_round_object):
         '''
-        This function returns said card and removes it from the hand.
+        This function is for the bot (or human) to decide.
         '''
-        if card in self.hand:
-            self.hand.remove(card)
-            return card
-        else:
-            raise ValueError('card must be in hand!')
+        if self.type[0] == 'random' or self.type[0] == None:
+            for card in self.hand:
+                if is_card_playable(card):
+                    self.hand.remove(card)
+                    return card
+
+        if self.type[0] == 'human':
+            '''
+            Here we need to implement the interface for asking a human to play a card
+            and an information object, that stores everything.
+            '''
+            return ask_human_for_card(information_object)
+
+        if self.type[0] == 'bot':
+            bot = self.type[1]
+            # How do we deal with the information flow towards the bot.
+            return bot.play_card(infomation_object)
+        
 
     def is_dealer(self):
         '''
@@ -240,21 +260,38 @@ def compare_cards_of_same_kind(card1, card2, showcard):
     if card2.number > card1.number:
         return card2
 
-
 def compare_cards(list_of_cards, showcard, rh_card):
+    '''
+    This function compares the list of cards depending on what the showcard and
+    the right-to-dealer card is. It returns the one that should win the round.
+    '''
     if rh_card not in list_of_cards:
         raise ValueError('The asked card must be in the list somewhere')
     current_winning_card = rh_card
     for card in list_of_cards:
         if card.kind == current_winning_card.kind:
-            print('Comparing {} with {}'.format(card, current_winning_card))
+            # print('Comparing {} with {}'.format(card, current_winning_card))
             current_winning_card = compare_cards_of_same_kind(card, current_winning_card, showcard)
-            print('Winner is: {}'.format(current_winning_card))
+            # print('Winner is: {}'.format(current_winning_card))
         if card.kind == showcard.kind and current_winning_card.kind != showcard.kind:
-            print('Comparing {} with {}'.format(card, current_winning_card))
+            # print('Comparing {} with {}'.format(card, current_winning_card))
             current_winning_card = card
-            print('Winner is: {}'.format(current_winning_card))
+            # print('Winner is: {}'.format(current_winning_card))
     return current_winning_card
+
+def is_card_playable(player, card, showcard, rh_card):
+    '''
+    This function detemines if a player can play a certain card, i.e. he's not
+    "surrendering" by leaving a card of the same kind of the showcard or the
+    rh_card.
+    '''
+    hand = player.hand
+    if card not in hand:
+        raise ValueError('Card must be in the player\'s hand')
+
+    if card.kind == rh_card.kind:
+        return True
+    # Pending implementation
 
 def play_global_round(list_of_players, current_lulo_price):
     global_round = GlobalRound(list_of_players, current_lulo_price)
@@ -286,6 +323,9 @@ def play_global_round(list_of_players, current_lulo_price):
     for player in list_of_players:
         if player.is_dealer():
             index_of_dealer = list_of_players.index(player)
+
+    if index_of_dealer == None:
+        raise ValueError('No player was the dealer, WAT?!')
     # We find the closest active player (to the right of the dealer) for it to be the
     # right hand.
 
@@ -294,15 +334,18 @@ def play_global_round(list_of_players, current_lulo_price):
         if list_of_players[index] in list_of_not_folded_players:
             list_of_players[index].right_to_dealer_status = True
             right_to_dealer_player = list_of_players[index]
+            index_of_rh_player = index
             break
     
     # Now we know who's starting the game. Now we start with the head.
-    list_of_played_cards_head = []
-    
-    # Temporarily, the hand chooses his first card at random.
-    first_card_head = right_to_dealer_player.play_card(
-                        random.choice(right_to_dealer_player.hand))
-    # Ask Oscar how could I build a \leq relation for cards.
+    list_of_played_cards_head = [None for active_player in list_of_not_folded_players]
+
+    for index in range(index_of_rh_player + len(list_of_not_folded_players)):
+        index = index % len(list_of_not_folded_players)
+        player = list_of_not_folded_players[index]
+        list_of_played_cards_head[index] = player.play_card()
+    # To-Do: how the hell do we let the player pick a card depending on
+    # the current state of the game?
 
 
 def game():

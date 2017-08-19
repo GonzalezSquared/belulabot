@@ -123,6 +123,3 @@ def test_comparison_of_cards6():
 
     assert lapi.compare_cards([card1, card2, card3, card4],
                               showcard, rh_card) == card4
-
-
-
