@@ -1,5 +1,13 @@
 import random
 
+'''
+luloapi.py, a python implementation of the classic colombian game Lulo.
+
+To-Do:
+    - Implement "el muerto"
+'''
+
+
 def cartesian_product_for_lists(list_1, list_2):
     '''
     This function takes two lists and outputs the cartesian product of them.
@@ -16,21 +24,32 @@ def cartesian_product_for_lists(list_1, list_2):
             cartesian_product.append((i, j))
     return cartesian_product
 
-class Deck_of_cards:
+class Card:
     '''
-    A deck_of_cards object represents a usual spanish deck (four pints: oro, copa, espada and basto)
-    and 12 numbers for every card. These are represented by tuples of the form ('x', y) where 'x' is
-    either 'o', 'c', 'e' or 'b' and y is an integer from 1 to 12.
+    Every card is represented by tuples of the form ('x', y) where 'x' is
+    either 'o', 'c', 'e' or 'b' and y is an integer from 1 to 12, and it has
+    only two attributes: kind (which is the first string of the tuple) and
+    number, which is the second.
+    '''
+    def __init__(self, card_tuple):
+        self.kind = card_tuple[0]
+        self.number = card_tuple[1]
+
+class DeckOfCards:
+    '''
+    A DeckOfCards object represents a usual spanish deck (four pints: oro, copa, espada and basto)
+    and 12 numbers for every card. 
     '''
     def __init__(self):
-        self.current_deck = [(pinta, numero) for (pinta, numero) in cartesian_product_for_lists(
+        self.current_deck = [Card((kind, numero)) for (kind, numero) in cartesian_product_for_lists(
             ['o', 'c', 'e', 'b'], range(1, 13))]
         self.original_deck = self.current_deck.copy()
         self.amount_of_cards = len(self.current_deck)
 
     def retrieve_card_at_random(self):
         '''
-        This function takes a card from the deck at random, removes it and return it.
+        This function takes a card from the deck at random, removes it and
+        returns it.
         '''
         card = random.choice(self.current_deck)
         self.current_deck.remove(card)
@@ -124,14 +143,14 @@ class Player:
             raise ValueError('The new lulo status should be a boolean!')
         self.lulo_status = new_lulo_status
 
-class Global_round:
+class GlobalRound:
     '''
     This is the auxiliar functions for the global round of each game.
     '''
     def __init__(self, _list_of_players, _current_lulo_price):
         self.list_of_players = _list_of_players
         self.current_lulo_price = _current_lulo_price
-        self.deck = deck_of_cards()
+        self.deck = DeckOfCards()
         self.bets = [0, 0, 0]
         self.showcard = self.deck.retrieve_card_at_random()
 
@@ -179,8 +198,58 @@ class Global_round:
         for _player in self.list_of_players:
             _player.recieve_hand(self.deck)
 
+def compare_cards_of_same_kind(card1, card2, showcard):
+    '''
+    This function compares two cards of the same kind. It considers the 
+    whole 7-as-showcard deal. 
+    '''
+    if card1.kind != card2.kind:
+        raise ValueError('Cards must be of the same kind')
+
+    if card1 == card2:
+        return card1
+
+    if card1.number == 1:
+        return card1
+    if card2.number == 1:
+        return card2
+
+    # At this point, none of them is an ace
+
+    if card1.number == 3:
+        return card1
+    if card2.number == 3:
+        return card2
+
+    # At this point, none of them is ace or three
+
+    # The number 7 card of the showcard kind plays as the showcard
+    if card1.kind == showcard.kind:
+        if card1.number == 7 and card1.number < showcard.number:
+            return compare_cards_of_same_kind(showcard, card2, showcard)
+        if card2.number == 7 and card2.number < showcard.number:
+            return compare_cards_of_same_kind(card1, showcard, showcard)
+
+    # What rests is just making a normal comparison, once 1, 3 and 7 have been
+    # discarded
+
+    if card1.number > card2.number:
+        return card1
+    if card2.number > card1.number:
+        return card2
+
+
+def compare_cards(list_of_cards, showcard, rh_card):
+    if rh_card not in list_of_cards:
+        raise ValueError('The asked card must be in the list somewhere')
+    current_winning_card = rh_card
+    for card in list_of_cards:
+        if card.kind == current_winning_card.kind:
+            current_winning_card = compare_cards_of_same_kind(card, current_winning_card)
+    return current_winning_card
+
 def play_global_round(list_of_players, current_lulo_price):
-    global_round = Global_round(list_of_players, current_lulo_price)
+    global_round = GlobalRound(list_of_players, current_lulo_price)
 
     # The round starts, the money is collected from past lulos and the hands
     # are dealt.
@@ -228,16 +297,11 @@ def play_global_round(list_of_players, current_lulo_price):
     # Ask Oscar how could I build a \leq relation for cards.
 
 
-class Local_round:
-    def __init__(self, _round_type):
-        self.round_type = _round_type
-        self.winners = set([])
-    
-
 def game():
     '''
     This function is the real deal, it starts a game of Lulo.
     '''
+    pass
 
 
         

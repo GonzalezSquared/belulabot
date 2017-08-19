@@ -1,7 +1,7 @@
 import luloapi as lapi
 
 def test_take_card_from_deck():
-    deck = lapi.Deck_of_cards()
+    deck = lapi.DeckOfCards()
     card = deck.retrieve_card_at_random()
     assert card not in deck.current_deck and card in deck.original_deck
 
@@ -33,7 +33,7 @@ def test_multiple_players_recieving_hands():
     player1 = lapi.Player()
     player2 = lapi.Player()
     player3 = lapi.Player()
-    deck = lapi.Deck_of_cards()
+    deck = lapi.DeckOfCards()
     player1.recieve_hand(deck)
     player2.recieve_hand(deck)
     player3.recieve_hand(deck)
