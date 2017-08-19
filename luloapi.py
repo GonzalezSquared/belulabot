@@ -31,9 +31,12 @@ class Card:
     only two attributes: kind (which is the first string of the tuple) and
     number, which is the second.
     '''
-    def __init__(self, card_tuple):
-        self.kind = card_tuple[0]
-        self.number = card_tuple[1]
+    def __init__(self, kind, number):
+        self.kind = kind
+        self.number = number
+
+    def __repr__(self):
+        return '({}, {})'.format(self.kind, self.number)
 
 class DeckOfCards:
     '''
@@ -41,7 +44,7 @@ class DeckOfCards:
     and 12 numbers for every card. 
     '''
     def __init__(self):
-        self.current_deck = [Card((kind, numero)) for (kind, numero) in cartesian_product_for_lists(
+        self.current_deck = [Card(kind, numero) for (kind, numero) in cartesian_product_for_lists(
             ['o', 'c', 'e', 'b'], range(1, 13))]
         self.original_deck = self.current_deck.copy()
         self.amount_of_cards = len(self.current_deck)
@@ -203,33 +206,32 @@ def compare_cards_of_same_kind(card1, card2, showcard):
     This function compares two cards of the same kind. It considers the 
     whole 7-as-showcard deal. 
     '''
+
     if card1.kind != card2.kind:
         raise ValueError('Cards must be of the same kind')
 
     if card1 == card2:
         return card1
 
+    # The number 7 card of the showcard kind plays as the showcard
+    if card1.kind == showcard.kind:
+        if card1.number == 7 and (card1.number < showcard.number or showcard.number in [1,3]):
+            if compare_cards_of_same_kind(showcard, card2, showcard) == showcard:
+                return card1
+    if card2.kind == showcard.kind:
+        if card2.number == 7 and (card2.number < showcard.number or showcard.number in [1,3]):
+            if compare_cards_of_same_kind(card1, showcard, showcard) == showcard:
+                return card2
+
     if card1.number == 1:
         return card1
     if card2.number == 1:
         return card2
 
-    # At this point, none of them is an ace
-
     if card1.number == 3:
         return card1
     if card2.number == 3:
         return card2
-
-    # At this point, none of them is ace or three
-
-    # The number 7 card of the showcard kind plays as the showcard
-    if card1.kind == showcard.kind:
-        if card1.number == 7 and card1.number < showcard.number:
-            return compare_cards_of_same_kind(showcard, card2, showcard)
-        if card2.number == 7 and card2.number < showcard.number:
-            return compare_cards_of_same_kind(card1, showcard, showcard)
-
     # What rests is just making a normal comparison, once 1, 3 and 7 have been
     # discarded
 
@@ -245,7 +247,13 @@ def compare_cards(list_of_cards, showcard, rh_card):
     current_winning_card = rh_card
     for card in list_of_cards:
         if card.kind == current_winning_card.kind:
-            current_winning_card = compare_cards_of_same_kind(card, current_winning_card)
+            print('Comparing {} with {}'.format(card, current_winning_card))
+            current_winning_card = compare_cards_of_same_kind(card, current_winning_card, showcard)
+            print('Winner is: {}'.format(current_winning_card))
+        if card.kind == showcard.kind and current_winning_card.kind != showcard.kind:
+            print('Comparing {} with {}'.format(card, current_winning_card))
+            current_winning_card = card
+            print('Winner is: {}'.format(current_winning_card))
     return current_winning_card
 
 def play_global_round(list_of_players, current_lulo_price):

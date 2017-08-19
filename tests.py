@@ -46,3 +46,83 @@ def test_multiple_players_recieving_hands():
     for card in player1.hand + player2.hand + player3.hand:
         if card in deck.current_deck:
             assert False
+
+def test_comparison_of_cards1():
+    card1 = lapi.Card('o', 3)
+    card2 = lapi.Card('o', 6)
+    rh_card = card1
+    showcard = lapi.Card('o', 1)
+    assert lapi.compare_cards([card1, card2], showcard, rh_card) == card1
+
+def test_comparison_of_cards2():
+    card1 = lapi.Card('o', 3)
+    card2 = lapi.Card('o', 6)
+    card3 = lapi.Card('b', 10)
+    card4 = lapi.Card('e', 12)
+    rh_card = card1
+    showcard = lapi.Card('o', 1)
+    assert lapi.compare_cards([card1, card2, card3, card4],
+                              showcard, rh_card) == card1
+
+def test_comparison_of_cards3():
+    card1 = lapi.Card('b', 10)
+    card2 = lapi.Card('o', 6)
+    card3 = lapi.Card('b', 1)
+    card4 = lapi.Card('e', 12)
+    rh_card = card1
+    showcard = lapi.Card('b', 2)
+    assert lapi.compare_cards([card1, card2, card3, card4],
+                              showcard, rh_card) == card3
+
+def test_comparison_of_cards3():
+    showcard = lapi.Card('b', 2)
+
+    card1 = lapi.Card('e', 3)
+    card2 = lapi.Card('e', 1)
+    card3 = lapi.Card('b', 4)
+    card4 = lapi.Card('o', 12)
+    rh_card = card1
+    
+    assert lapi.compare_cards([card1, card2, card3, card4],
+                              showcard, rh_card) == card3
+
+def test_comparison_of_cards4():
+    showcard = lapi.Card('o', 1)
+
+    card1 = lapi.Card('e', 3)
+    card2 = lapi.Card('e', 1)
+    card3 = lapi.Card('o', 3)
+    card4 = lapi.Card('o', 7)
+    rh_card = card1
+
+    # Here, card4 should win, because it is playing as the ('o', 1).
+
+    assert lapi.compare_cards([card1, card2, card3, card4],
+                              showcard, rh_card) == card4
+
+def test_comparison_of_cards5():
+    showcard = lapi.Card('c', 3)
+
+    card1 = lapi.Card('c', 2)
+    card2 = lapi.Card('c', 12)
+    card3 = lapi.Card('c', 7)
+    card4 = lapi.Card('c', 6)
+    rh_card = card1
+
+    assert lapi.compare_cards([card1, card2, card3, card4],
+                              showcard, rh_card) == card3
+
+def test_comparison_of_cards6():
+    showcard = lapi.Card('c', 3)
+
+    card1 = lapi.Card('c', 4)
+    card2 = lapi.Card('c', 5)
+    card3 = lapi.Card('c', 6)
+    card4 = lapi.Card('c', 9)
+    rh_card = card1
+
+    assert lapi.compare_cards([card1, card2, card3, card4],
+                              showcard, rh_card) == card4
+
+
+
