@@ -31,9 +31,16 @@ class Card:
     only two attributes: kind (which is the first string of the tuple) and
     number, which is the second.
     '''
-    def __init__(self, kind, number):
-        self.kind = kind
-        self.number = number
+    def __init__(self, _kind, _number):
+        self.kind = _kind
+        self.number = _number
+
+    def __eq__(self, other):
+        # print('other\'s type: ' + str(type(other)))
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.kind == other.kind and self.number == other.number
 
     def __repr__(self):
         return '({}, {})'.format(self.kind, self.number)
@@ -231,6 +238,7 @@ def compare_cards_of_same_kind(card1, card2, showcard):
         raise ValueError('Cards must be of the same kind')
 
     if card1 == card2:
+        # print('cards are equal, so return True')
         return card1
 
     # The number 7 card of the showcard kind plays as the showcard
@@ -269,9 +277,14 @@ def compare_cards(list_of_cards, showcard, rh_card):
         raise ValueError('The asked card must be in the list somewhere')
     current_winning_card = rh_card
     for card in list_of_cards:
+        # print('card\'s type: ' + str(type(card)))
+        # print('showcard\'s type: ' + str(type(showcard)))
+        # print('rh_card\'s type: ' + str(type(rh_card)))
         if card.kind == current_winning_card.kind:
             # print('Comparing {} with {}'.format(card, current_winning_card))
             current_winning_card = compare_cards_of_same_kind(card, current_winning_card, showcard)
+            # print(current_winning_card)
+            # print('winning card\'s type: ' + str(type(current_winning_card)))
             # print('Winner is: {}'.format(current_winning_card))
         if card.kind == showcard.kind and current_winning_card.kind != showcard.kind:
             # print('Comparing {} with {}'.format(card, current_winning_card))
@@ -279,19 +292,61 @@ def compare_cards(list_of_cards, showcard, rh_card):
             # print('Winner is: {}'.format(current_winning_card))
     return current_winning_card
 
-def is_card_playable(player, card, showcard, rh_card):
+#To-Do: implement ask_human_for_card function.
+
+def is_card_playable(card, hand, showcard, rh_card, past_cards):
     '''
     This function detemines if a player can play a certain card, i.e. he's not
     "surrendering" by leaving a card of the same kind of the showcard or the
     rh_card.
+
+    To-Do:
+        - Reimpelement this with the public info class.
     '''
-    hand = player.hand
     if card not in hand:
         raise ValueError('Card must be in the player\'s hand')
 
-    if card.kind == rh_card.kind:
+    list_of_rh_kind_cards = [c for c in hand if c.kind == rh_card.kind]
+    list_of_showcard_kind_cards = [c for c in hand if c.kind == showcard.kind]
+    playable_cards = []
+
+    if list_of_rh_kind_cards != []:
+        for _card in list_of_rh_kind_cards:
+            # Play to win: if the card wins, it is playable.
+            if compare_cards(past_cards + [_card], showcard, rh_card) != compare_cards(past_cards, showcard, rh_card):
+                print('card ' + str(_card) + ' affects!')
+                playable_cards.append(_card)
+        if playable_cards == []:
+            # If no rh-like-card wins, then they all can be played.
+            print('No card affected!')
+            playable_cards += list_of_rh_kind_cards
+            print('Playable cards: ' + str(playable_cards))
+
+        if card in playable_cards:
+            return True
+        else:
+            return False
+
+    if list_of_rh_kind_cards == [] and list_of_showcard_kind_cards != []:
+        for _card in list_of_showcard_kind_cards:
+            if compare_cards(past_cards + [_card], showcard, rh_card) != compare_cards(past_cards, showcard, rh_card):
+                playable_cards.append(_card)
+            if playable_cards == []:
+                playable_cards += list_of_showcard_kind_cards
+
+        if card in playable_cards:
+            return True
+        else:
+            return False
+
+    if list_of_rh_kind_cards == [] and list_of_showcard_kind_cards == []:
         return True
-    # Pending implementation
+
+
+
+
+
+
 
 def play_global_round(list_of_players, current_lulo_price):
     global_round = GlobalRound(list_of_players, current_lulo_price)
