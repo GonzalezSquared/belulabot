@@ -175,7 +175,7 @@ class Player:
 
 class GlobalRound:
     '''
-    This is the auxiliar functions for the global round of each game.
+    This are the auxiliar functions for the global round of each game.
     '''
     def __init__(self, _list_of_players, _current_lulo_price):
         self.list_of_players = _list_of_players
@@ -299,9 +299,6 @@ def is_card_playable(card, hand, showcard, rh_card, past_cards):
     This function detemines if a player can play a certain card, i.e. he's not
     "surrendering" by leaving a card of the same kind of the showcard or the
     rh_card.
-
-    To-Do:
-        - Reimpelement this with the public info class.
     '''
     if card not in hand:
         raise ValueError('Card must be in the player\'s hand')
@@ -341,12 +338,6 @@ def is_card_playable(card, hand, showcard, rh_card, past_cards):
 
     if list_of_rh_kind_cards == [] and list_of_showcard_kind_cards == []:
         return True
-
-
-
-
-
-
 
 def play_global_round(list_of_players, current_lulo_price):
     global_round = GlobalRound(list_of_players, current_lulo_price)
