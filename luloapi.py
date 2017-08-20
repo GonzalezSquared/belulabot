@@ -339,6 +339,10 @@ def is_card_playable(card, hand, showcard, rh_card, past_cards):
     if list_of_rh_kind_cards == [] and list_of_showcard_kind_cards == []:
         return True
 
+def get_playable_cards(hand, showcard, rh_card, past_cards):
+    playable_cards = [card for card in hand if is_card_playable(card)]
+    return playable_cards
+
 def play_global_round(list_of_players, current_lulo_price):
     global_round = GlobalRound(list_of_players, current_lulo_price)
 
@@ -392,7 +396,6 @@ def play_global_round(list_of_players, current_lulo_price):
         list_of_played_cards_head[index] = player.play_card()
     # To-Do: how the hell do we let the player pick a card depending on
     # the current state of the game?
-
 
 def game():
     '''
