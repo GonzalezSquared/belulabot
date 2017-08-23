@@ -117,10 +117,61 @@ class Player:
         self.chips -= betting_amount
         return betting_amount
 
-    def play_card(self, global_round_object):
+    def ask_for_fold(self):
+        '''
+        This functions asks the player if he wants to fold or not.
+        '''
+        if self.type[0] == None:
+            '''
+            None means random, so the device folds depending on some random number
+            '''
+            if random.uniform(0,1) <= 0.5:
+                return True
+            else:
+                return False
+        if self.type[0] == 'human':
+            print('Your hand is: ' + str(self.hand))
+            print('Do you want to fold? (y/n)')
+            value = input()
+            if value == 'y':
+                return True
+            elif value == 'n':
+                return False
+        if self.type[0] == 'bot':
+            bot = self.type[1]
+            # How do we deal with the information flow towards the bot?
+            return bot.folding_function()
+
+    def ask_for_card_change(self, global_round_object):
+        '''
+        This functions asks for a list of cards to be changed and returns it.
+        '''
+        gro = global_round_object
+        list_of_cards_to_be_changed = []
+        if self.type[0] == None:
+            for card in self.hand:
+                if card.kind != gro.showcard:
+                    list_of_cards_to_be_changed.append(card)
+
+        if self.type[0] == 'human':
+            print('Your hand is: ' + self.hand)
+            print('Which cards do you want to change?, write their indexes: ')
+            card_indexes = input()
+            list_of_ints_in_input = [int(k) for k in card_indexes if k.is_numeric()]
+            list_of_cards_to_be_changed += list_of_ints_in_input
+
+        if self.type[0] == 'bot':
+            bot = self.type[1]
+            list_of_cards_to_be_changed = bot.select_cards_for_change(gro)
+            # Same as above, how do we deal with the info flow?
+
+
+
+    def play_card(self, global_round_object, list_of_played_cards):
         '''
         This function is for the bot (or human) to decide.
         '''
+        gro = global_round_object
         if self.type[0] == 'random' or self.type[0] == None:
             for card in self.hand:
                 if is_card_playable(card):
@@ -132,29 +183,37 @@ class Player:
             Here we need to implement the interface for asking a human to play a card
             and an information object, that stores everything.
             '''
-            return ask_human_for_card(information_object)
+            print('The showcard is: ' + str(gro.showcard))
+            print('The played cards are: ' + str(list_of_played_cards))
+            print('Your hand is: ' + str(self.hand))
+            print('Which card do you want to play?, write the index:')
+            index = int(input())
+            return self.hand[index]
 
         if self.type[0] == 'bot':
             bot = self.type[1]
             # How do we deal with the information flow towards the bot.
-            return bot.play_card(infomation_object)
+            return bot.play_card(gro)
         
 
     def is_dealer(self):
         '''
-        This function returns a boolean, it returns whether the player is the dealer or not.
+        This function returns a boolean, it returns whether the player is the
+        dealer or not.
         '''
         return self.dealer_status
 
     def is_right_hand(self):
         '''
-        This function returns a boolean, it returns whether the player is the right hand or not.
+        This function returns a boolean, it returns whether the player is the
+        right hand or not.
         '''
         return self.right_to_dealer_status
 
     def is_lulo(self):
         '''
-        This function returns a boolean, it returns whether the player is lulo-ed or not.
+        This function returns a boolean, it returns whether the player is
+        lulo-ed or not.
         '''
         return self.lulo_status
 
@@ -166,8 +225,8 @@ class Player:
 
     def set_lulo_status(self, new_lulo_status):
         '''
-        This function sets the new lulo status (i.e. True if the player lost all local rounds and
-        false otherwise).
+        This function sets the new lulo status (i.e. True if the player lost
+        all local rounds and false otherwise).
         '''
         if isinstance(new_lulo_status, bool):
             raise ValueError('The new lulo status should be a boolean!')
@@ -186,12 +245,14 @@ class GlobalRound:
 
     def collect_money_from_lulo_players(self):
         '''
-        This function iterates over the list of players and collects money from those who
-        were lulo-ed last round.
-
-        To-Do:
-            -What if a player has no money?
+        This function iterates over the list of players and collects money from
+        those who were lulo-ed last round. If a player has no money to play a
+        lulo, he's outted.
         '''
+        for _player in self.list_of_players:
+            if _player.chips < self.current_lulo_price:
+                self.list_of_players.remove(_player)
+
         all_collected_money = 0
         for _player in self.list_of_players:
             if _player.is_lulo():
@@ -216,8 +277,6 @@ class GlobalRound:
 
     '''
     Questions:
-        - How to deal with the bets of each player? (even in a bot-ish way).
-          For now, let's do it randomly. We'll think of a way later on.
         - How do we deal with changing cards.
     '''
 
@@ -351,19 +410,19 @@ def play_global_round(list_of_players, current_lulo_price):
     global_round.collect_and_distribute_money()
     global_round.deal_hands()
 
-    # We let players fold, depending on what they got in their hands. Temporarily,
-    # we do it randomly.
+    # Now we ask players if they want to play or fold.
+
+
     list_of_not_folded_players = []
-    for player in list_of_players:
-        if random.uniform(0, 1) >= 0.5:
-            player.folded_status = True
-        else:
-            list_of_not_folded_players.append(player)
+    for _player in list_of_players:
+        folded_status = _player.ask_for_fold()
+        if not folded_status:
+            list_of_not_folded_players.append(_player)
     
     # If there's only one player, he wins it all.
     if len(list_of_not_folded_players) == 1:
-        player = list_of_not_folded_players[0]
-        player.recieve_money(global_round.bets[0] 
+        _player = list_of_not_folded_players[0]
+        _player.recieve_money(global_round.bets[0] 
                              + global_round.bets[1]
                              + global_round.bets[2])
     
@@ -376,9 +435,10 @@ def play_global_round(list_of_players, current_lulo_price):
 
     if index_of_dealer == None:
         raise ValueError('No player was the dealer, WAT?!')
-    # We find the closest active player (to the right of the dealer) for it to be the
-    # right hand.
 
+
+    # We find the closest active player (to the right of the dealer) for it to
+    # be the right hand.
     for index in range(index_of_dealer, index_of_dealer + len(list_of_players)):
         index = index % len(list_of_players)
         if list_of_players[index] in list_of_not_folded_players:
@@ -394,14 +454,9 @@ def play_global_round(list_of_players, current_lulo_price):
         index = index % len(list_of_not_folded_players)
         player = list_of_not_folded_players[index]
         list_of_played_cards_head[index] = player.play_card()
-    # To-Do: how the hell do we let the player pick a card depending on
-    # the current state of the game?
 
 def game():
     '''
     This function is the real deal, it starts a game of Lulo.
     '''
     pass
-
-
-        
