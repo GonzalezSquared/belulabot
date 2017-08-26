@@ -48,7 +48,9 @@ class Card:
 class DeckOfCards:
     '''
     A DeckOfCards object represents a usual spanish deck (four pints: oro, copa, espada and basto)
-    and 12 numbers for every card. 
+    and 12 numbers for every card.
+    To-Do:
+        - What if there's no more cards?
     '''
     def __init__(self):
         self.current_deck = [Card(kind, numero) for (kind, numero) in cartesian_product_for_lists(
@@ -79,11 +81,11 @@ class Player:
     def __init__(self, _type=(None, None), _chips=5000):
         self.chips = _chips
         self.dealer_status = False
-        self.folded_status = False # How do we let the players (bots) choose?
+        self.folded_status = False
         self.hand = []
         self.lulo_status = False
         self.memory_of_past_cards = []
-        self.name = None
+        # self.name = None
         self.right_to_dealer_status = False
         self.type = _type
 
@@ -165,8 +167,6 @@ class Player:
             list_of_cards_to_be_changed = bot.select_cards_for_change(gro)
             # Same as above, how do we deal with the info flow?
 
-
-
     def play_card(self, global_round_object, list_of_played_cards):
         '''
         This function is for the bot (or human) to decide.
@@ -188,13 +188,23 @@ class Player:
             print('Your hand is: ' + str(self.hand))
             print('Which card do you want to play?, write the index:')
             index = int(input())
+            while not is_card_playable(self.hand[index], self.hand, gro.showcard,
+                                    list_of_played_cards[0], list_of_played_cards):
+                print('You can\'t play that, write another index:')
+                index = int(input())
+            
             return self.hand[index]
 
         if self.type[0] == 'bot':
             bot = self.type[1]
             # How do we deal with the information flow towards the bot.
-            return bot.play_card(gro)
-        
+            card = bot.play_card(self.hand[index], self.hand, gro.showcard,
+                                list_of_played_cards[0], list_of_played_cards)
+            if is_card_playable(self.hand[index], self.hand, gro.showcard,
+                                list_of_played_cards[0], list_of_played_cards):
+                return bot.play_card(gro)
+            else:
+                raise ValueError('Bot is not well programmed, card is not playable.')
 
     def is_dealer(self):
         '''
@@ -232,7 +242,7 @@ class Player:
             raise ValueError('The new lulo status should be a boolean!')
         self.lulo_status = new_lulo_status
 
-class GlobalRound:
+class Round:
     '''
     This are the auxiliar functions for the global round of each game.
     '''
@@ -242,6 +252,7 @@ class GlobalRound:
         self.deck = DeckOfCards()
         self.bets = [0, 0, 0]
         self.showcard = self.deck.retrieve_card_at_random()
+        self.muerto = [self.deck.retrieve_card_at_random() for k in range(4)]
 
     def collect_money_from_lulo_players(self):
         '''
@@ -275,10 +286,13 @@ class GlobalRound:
         tail_amount = collected_money - head_amount - body_amount
         self.bets = [head_amount, body_amount, tail_amount]
 
-    '''
-    Questions:
-        - How do we deal with changing cards.
-    '''
+    def change_cards(player_object, request):
+        '''
+        This function changes the cards in the player's hand, given his request.
+
+        To-Do: Implement this beauty
+        '''
+        pass
 
     def deal_hands(self):
         '''
@@ -351,8 +365,6 @@ def compare_cards(list_of_cards, showcard, rh_card):
             # print('Winner is: {}'.format(current_winning_card))
     return current_winning_card
 
-#To-Do: implement ask_human_for_card function.
-
 def is_card_playable(card, hand, showcard, rh_card, past_cards):
     '''
     This function detemines if a player can play a certain card, i.e. he's not
@@ -403,7 +415,7 @@ def get_playable_cards(hand, showcard, rh_card, past_cards):
     return playable_cards
 
 def play_global_round(list_of_players, current_lulo_price):
-    global_round = GlobalRound(list_of_players, current_lulo_price)
+    global_round = Round(list_of_players, current_lulo_price)
 
     # The round starts, the money is collected from past lulos and the hands
     # are dealt.
@@ -411,8 +423,6 @@ def play_global_round(list_of_players, current_lulo_price):
     global_round.deal_hands()
 
     # Now we ask players if they want to play or fold.
-
-
     list_of_not_folded_players = []
     for _player in list_of_players:
         folded_status = _player.ask_for_fold()
