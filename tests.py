@@ -177,3 +177,31 @@ def test_is_card_playable7():
     hand = [lapi.Card('c', 4), lapi.Card('e', 8), lapi.Card('c', 3)]
     assert lapi.is_card_playable(lapi.Card('e', 8),
                                  hand, showcard, past_cards)
+
+def test_is_card_playable8():
+    showcard = lapi.Card('o', 2)
+    rh_card = lapi.Card('b', 6)
+    past_cards = [rh_card]
+    hand = [lapi.Card('e', 5), lapi.Card('o', 1), lapi.Card('b', 4)]
+    assert not lapi.is_card_playable(lapi.Card('o', 1),
+                                 hand, showcard, past_cards)
+
+def test_move_the_dealer1():
+    player1 = lapi.Player()
+    player2 = lapi.Player()
+    player3 = lapi.Player()
+
+    player1.dealer_status = True
+    list_of_players = [player1, player2, player3]
+    lapi.move_dealer(list_of_players)
+    assert player2.dealer_status
+
+def test_move_the_dealer2():
+    player1 = lapi.Player()
+    player2 = lapi.Player()
+    player3 = lapi.Player()
+
+    player3.dealer_status = True
+    list_of_players = [player1, player2, player3]
+    lapi.move_dealer(list_of_players)
+    assert player1.dealer_status and not player3.dealer_status

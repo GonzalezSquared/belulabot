@@ -163,7 +163,7 @@ def is_card_playable(card, hand, showcard, past_cards, round_type=None):
                 is_the_best_card = True
                 for _card in list_of_showcard_kind_cards:
                     is_the_best_card = (is_the_best_card 
-                                        and card == compare_cards_of_same_kind(card, _card))
+                                        and card == compare_cards([card, _card], showcard))
         if round_type == 'tail':
             return True
         if round_type == None:
@@ -230,6 +230,9 @@ class Player:
         # self.name = None
         self.right_to_dealer_status = False
         self.type = _type
+    
+    def __repr__(self):
+        return self.type[1]
 
     def recieve_card(self, deck):
         '''
@@ -261,10 +264,11 @@ class Player:
         self.chips -= betting_amount
         return betting_amount
 
-    def ask_for_fold(self):
+    def ask_for_fold(self, global_round_object):
         '''
         This functions asks the player if he wants to fold or not.
         '''
+        gro = global_round_object
         if self.type[0] == None:
             '''
             None means random, so the device folds depending on some random number
@@ -274,17 +278,21 @@ class Player:
             else:
                 return False
         if self.type[0] == 'human':
+            print(self.type[1] + ', it is your turn.')
+            print('The showcard is: ' + str(gro.showcard))
             print('Your hand is: ' + str(self.hand))
-            print('Do you want to fold? (y/n)')
+            print('Do you want to fold? (y/n): ')
             value = input()
             if value == 'y':
                 return True
             elif value == 'n':
                 return False
+            else:
+                raise ValueError('Player must respond with either y or n')
         if self.type[0] == 'bot':
             bot = self.type[1]
             # How do we deal with the information flow towards the bot?
-            return bot.folding_function()
+            return bot.folding_function(global_round_object)
 
     def ask_for_card_change(self, global_round_object):
         '''
@@ -298,11 +306,18 @@ class Player:
                     list_of_cards_to_be_changed.append(card)
 
         if self.type[0] == 'human':
-            print('Your hand is: ' + self.hand)
+            print(self.type[1] + ', you need to change cards.')
+            print('The showcard is: ' + str(gro.showcard))
+            print('Your hand is: ' + str(self.hand))
             print('Which cards do you want to change?, write their indexes: ')
             card_indexes = input()
-            list_of_ints_in_input = [int(k) for k in card_indexes if k.is_numeric()]
+            list_of_ints_in_input = [int(k) for k in card_indexes if k.isnumeric()]
+            print('the list of cards you want to change are: ' + str(list_of_ints_in_input))
             list_of_cards_to_be_changed += list_of_ints_in_input
+            for index in list_of_cards_to_be_changed:
+                print(index)
+                self.hand[index] = gro.deck.retrieve_card_at_random()
+                print(self.hand[index])
 
         if self.type[0] == 'bot':
             bot = self.type[1]
@@ -325,6 +340,7 @@ class Player:
             Here we need to implement the interface for asking a human to play a card
             and an information object, that stores everything.
             '''
+            print(self.type[1] + ', it is your turn.')
             print('The showcard is: ' + str(gro.showcard))
             print('The played cards are: ' + str(list_of_played_cards))
             print('Your hand is: ' + str(self.hand))
@@ -334,8 +350,9 @@ class Player:
                                     list_of_played_cards, round_type):
                 print('You can\'t play that, write another index:')
                 index = int(input())
-            
-            return self.hand[index]
+            card = self.hand[index]
+            self.hand.remove(card)
+            return card
 
         if self.type[0] == 'bot':
             bot = self.type[1]
@@ -452,6 +469,24 @@ class Round:
         for index in request:
             player_object.hand[index] = gro.deck.retrieve_card_at_random()
 
+def move_dealer(list_of_players):
+    '''
+    This function grabs a list of players and moves the dealer one to 
+    the right (i.e. from index k to (k+1) % m, where m is the amount of players).
+    '''
+    index_of_dealer = None
+    for _player in list_of_players:
+        if _player.dealer_status == True:
+            index_of_dealer = list_of_players.index(_player)
+            _player.dealer_status = False
+    
+    if index_of_dealer == None:
+        raise ValueError('There\'s no dealer!')
+    
+    new_list_of_players = list_of_players.copy()
+    new_list_of_players[(index_of_dealer + 1) % len(list_of_players)].dealer_status = True
+    return new_list_of_players
+
 def play_global_round(list_of_players, current_lulo_price):
     global_round = Round(list_of_players, current_lulo_price)
     list_of_winners = []
@@ -464,16 +499,20 @@ def play_global_round(list_of_players, current_lulo_price):
     # Now we ask players if they want to play or fold.
     list_of_not_folded_players = []
     for _player in list_of_players:
-        folded_status = _player.ask_for_fold()
+        folded_status = _player.ask_for_fold(global_round)
         if not folded_status:
             list_of_not_folded_players.append(_player)
     
     # If there's only one player, he wins it all.
     if len(list_of_not_folded_players) == 1:
         _player = list_of_not_folded_players[0]
-        _player.recieve_money(global_round.bets[0] 
-                             + global_round.bets[1]
-                             + global_round.bets[2])
+        _player.recieve_money(global_round.bets['head'] 
+                             + global_round.bets['body']
+                             + global_round.bets['tail'])
+
+    # Now we ask players if they want to change their hand
+    for _player in list_of_not_folded_players:
+        _player.ask_for_card_change(global_round)
     
     # We find the index of the dealer (which can be optimized by putting this on
     # the same loop as the one before).
@@ -509,42 +548,61 @@ def play_global_round(list_of_players, current_lulo_price):
                                 list_of_played_cards_head, 'head'))
 
     # We compare the cards and find out which wins
-    winner_card_head = compare_cards(list_of_played_cards_head, showcard)
+    winner_card_head = compare_cards(list_of_played_cards_head, global_round.showcard)
 
     # We award the winner his respective money
-    index_of_winner_head = list_of_played_cards.index(winner_card_head)
-    winner_player_head = list_of_played_cards_head[index_of_winner_head]
+    index_of_winner_head = list_of_played_cards_head.index(winner_card_head)
+    winner_player_head = list_of_players_in_p_order_head[index_of_winner_head]
     list_of_winners.append(winner_player_head)
     winner_player_head.recieve_money(global_round.bets['head'])
     global_round.bets['head'] = 0
+    print(winner_player_head.type[1] + ' wins the head!')
 
     # Now we go to the body round, with the same procedure:
     list_of_players_in_p_order_body = (list_of_not_folded_players[index_of_winner_head:]
                                 + list_of_not_folded_players[:index_of_winner_head])
+    print('the new order of players is: ' + str(list_of_players_in_p_order_body))
     list_of_played_cards_body = []
     for _player in list_of_players_in_p_order_body:
         list_of_played_cards_body.append(_player.play_card(global_round, 
                                 list_of_played_cards_body, 'body'))
-    winner_card_body = compare_cards(list_of_played_cards_body, showcard)
-    index_of_winner_body = list_of_played_cards.index(winner_card_body)
-    winner_player_body = list_of_played_cards_body[index_of_winner_body]
+    winner_card_body = compare_cards(list_of_played_cards_body, global_round.showcard)
+    index_of_winner_body = list_of_played_cards_body.index(winner_card_body)
+    winner_player_body = list_of_players_in_p_order_body[index_of_winner_body]
+    index_of_winner_body_in_original_list = list_of_not_folded_players.index(winner_player_body)
     list_of_winners.append(winner_player_body)
     winner_player_body.recieve_money(global_round.bets['body'])
     global_round.bets['body'] = 0
+    print(winner_player_body.type[1] + ' wins the body!')
 
     # And, finally, the tail:
-    list_of_players_in_p_order_tail = (list_of_not_folded_players[index_of_winner_body:]
-                                + list_of_not_folded_players[:index_of_winner_body])
+    print('The winner of past round was ' + str(winner_player_body))
+    print('His index in the list ' + str(list_of_not_folded_players) + ' is ' + str(index_of_winner_body_in_original_list))
+    list_of_players_in_p_order_tail = (list_of_not_folded_players[index_of_winner_body_in_original_list:]
+                                + list_of_not_folded_players[:index_of_winner_body_in_original_list])
+    print('the new order of players is: ' + str(list_of_players_in_p_order_tail))
     list_of_played_cards_tail = []
     for _player in list_of_players_in_p_order_tail:
         list_of_played_cards_tail.append(_player.play_card(global_round, 
                                 list_of_played_cards_tail, 'tail'))
-    winner_card_tail = compare_cards(list_of_played_cards_tail, showcard)
-    index_of_winner_tail = list_of_played_cards.index(winner_card_tail)
-    winner_player_tail = list_of_played_cards_tail[index_of_winner_tail]
+    winner_card_tail = compare_cards(list_of_played_cards_tail, global_round.showcard)
+    index_of_winner_tail = list_of_played_cards_tail.index(winner_card_tail)
+    winner_player_tail = list_of_players_in_p_order_tail[index_of_winner_tail]
     list_of_winners.append(winner_player_tail)
     winner_player_tail.recieve_money(global_round.bets['tail'])
     global_round.bets['tail'] = 0
+    print(winner_player_tail.type[1] + ' wins the tail!')
+
+    # Now we reset lulo status and we set the lulo status to true for losers
+    for _player in list_of_players:
+        _player.lulo_status = False
+
+    for _player in list_of_not_folded_players:
+        if _player not in list_of_winners:
+            _player.lulo_status = True
+    
+    # Finally, we move the dealer to the next position
+    move_dealer(list_of_players)
 
 def game():
     '''
