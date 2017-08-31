@@ -6,6 +6,8 @@ luloapi.py, a python implementation of the classic colombian game Lulo.
 To-Do:
     - Implement "el muerto"
     - Implement a change in the lulo price.
+    - Implement the obligation criteria
+    - Implement the "relancina"
 '''
 
 
@@ -283,7 +285,7 @@ class Player:
             '''
             has_showcard_kind_cards = False
             for _card in self.hand:
-                has_showcard_kind_cards = has_showcard_kind_cards or (_card.kind == gro.showcard)
+                has_showcard_kind_cards = has_showcard_kind_cards or (_card.kind == gro.showcard.kind)
             if has_showcard_kind_cards:
                 return False
             if not has_showcard_kind_cards:
@@ -319,7 +321,7 @@ class Player:
         list_of_cards_to_be_changed = []
         if self.type[0] == None:
             for card in self.hand:
-                if card.kind != gro.showcard:
+                if card.kind != gro.showcard.kind:
                     list_of_cards_to_be_changed.append(card)
             for _card in list_of_cards_to_be_changed:
                 index = self.hand.index(_card)
@@ -581,6 +583,7 @@ def play_global_round(list_of_players, current_lulo_price):
 
     # We find who the dealer is
     index_of_dealer = find_dealer(list_of_players)
+    print('The dealer is: ' + list_of_players[index_of_dealer].name)
 
     # Now we ask players if they want to play or fold.
     list_of_not_folded_players = []
@@ -607,13 +610,14 @@ def play_global_round(list_of_players, current_lulo_price):
 
     # We find the closest active player (to the right of the dealer) for it to
     # be the right hand.
-    for index in range(index_of_dealer, index_of_dealer + len(list_of_players)):
+    for index in range(index_of_dealer + 1, index_of_dealer + 1 + len(list_of_players)):
         index = index % len(list_of_players)
         if list_of_players[index] in list_of_not_folded_players:
             list_of_players[index].right_to_dealer_status = True
             right_to_dealer_player = list_of_players[index]
             index_of_rh_player = index
             break
+    print('The right_hand player is: ' + list_of_players[index_of_rh_player].name)
 
     # Now we create a new list of players in playing order.
     list_of_players_in_p_order_head = (list_of_not_folded_players[index_of_rh_player:]
@@ -622,6 +626,10 @@ def play_global_round(list_of_players, current_lulo_price):
     # Now we ask players if they want to change their hand
     for _player in list_of_players_in_p_order_head:
         _player.ask_for_card_change(global_round)
+    
+    print('These are the player\'s hands after changing: ')
+    for _player in list_of_players:
+        print(_player.name + ': ' + str(_player.hand))
     
     # Now we know who's starting the game. Now we start with the head.
     list_of_played_cards_head = []
@@ -640,7 +648,8 @@ def play_global_round(list_of_players, current_lulo_price):
     list_of_winners.append(winner_player_head)
     winner_player_head.recieve_money(global_round.bets['head'])
     global_round.bets['head'] = 0
-    print(winner_player_head.type[1] + ' wins the head!')
+    print(winner_player_head.type[1] + ' wins the head! (with ' + str(winner_card_head)
+          + ' in ' + str(list_of_played_cards_head))
 
     # Now we go to the body round, with the same procedure:
     list_of_players_in_p_order_body = (list_of_not_folded_players[index_of_winner_head:]
@@ -657,7 +666,8 @@ def play_global_round(list_of_players, current_lulo_price):
     list_of_winners.append(winner_player_body)
     winner_player_body.recieve_money(global_round.bets['body'])
     global_round.bets['body'] = 0
-    print(winner_player_body.type[1] + ' wins the body!')
+    print(winner_player_body.type[1] + ' wins the body! (with ' + str(winner_card_body)
+          + ' in ' + str(list_of_played_cards_body))
 
     # And, finally, the tail:
     # print('The winner of past round was ' + str(winner_player_body))
@@ -675,7 +685,8 @@ def play_global_round(list_of_players, current_lulo_price):
     list_of_winners.append(winner_player_tail)
     winner_player_tail.recieve_money(global_round.bets['tail'])
     global_round.bets['tail'] = 0
-    print(winner_player_tail.type[1] + ' wins the tail!')
+    print(winner_player_tail.type[1] + ' wins the tail! (with ' + str(winner_card_tail)
+          + ' in ' + str(list_of_played_cards_tail))
 
     # Now we reset lulo status and we set the lulo status to true for losers
     for _player in list_of_players:
@@ -699,4 +710,4 @@ def game(list_of_players, initial_lulo_price):
     while len(list_of_players) > 1:
         play_global_round(list_of_players, initial_lulo_price)
     winner = list_of_players[0]
-    print(winner.name + 'is the winner!')
+    print(winner.name + ' is the winner!')
