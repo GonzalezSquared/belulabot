@@ -153,6 +153,11 @@ def is_card_playable(card, hand, showcard, past_cards, round_type=None):
         plays first:
         '''
         if round_type == 'head':
+            if Card(7, showcard.kind) in hand and showcard.number == 1:
+                if card == Card(7, showcard.kind): 
+                    return True
+                else:
+                    return False
             if Card(1, showcard.kind) not in hand:
                 return True
             if Card(1, showcard.kind) in hand and card != Card(1, showcard.kind):
@@ -353,10 +358,12 @@ class Player:
         '''
         gro = global_round_object
         if self.type[0] == 'random' or self.type[0] == None:
-            for card in self.hand:
-                if is_card_playable(card, self.hand, gro.showcard, list_of_played_cards, round_type):
-                    self.hand.remove(card)
-                    return card
+            playable_cards = get_playable_cards(self.hand, gro.showcard, list_of_played_cards, round_type)
+            return random.choice(playable_cards)
+            # for card in self.hand:
+            #     if is_card_playable(card, self.hand, gro.showcard, list_of_played_cards, round_type):
+            #         self.hand.remove(card)
+            #         return card
 
         if self.type[0] == 'human':
             '''
@@ -472,26 +479,12 @@ class Round:
         self.bets['body'] = body_amount
         self.bets['tail'] = tail_amount
 
-    def deal_hands(self):
+    def deal_hands(self, index_of_dealer):
         '''
         This function deals the players 3 cards each. It does so IN PLACE.
         '''
-        for _player in self.list_of_players:
+        for _player in self.list_of_players[index_of_dealer:] + self.list_of_players[:index_of_dealer]:
             _player.recieve_hand(self.deck)
-
-    def change_cards(global_round_object, player_object, request):
-        '''
-        This function changes the cards in the player's hand, given his request.
-        The request is a list of indexes which are to be changed in player's hand.
-        It does so IN PLACE, in the player_object.
-
-        To-Do:
-            -Check if ask_for_change is well implemented, in the sense that requests
-             come here well defined.
-        '''
-        gro = global_round_object
-        for index in request:
-            player_object.hand[index] = gro.deck.retrieve_card_at_random()
 
 def find_dealer(list_of_players):
     for _player in list_of_players:
@@ -567,8 +560,13 @@ def play_global_round(list_of_players, current_lulo_price):
 
     # The round starts, the money is collected from past lulos and the hands
     # are dealt.
+
+    # We find who the dealer is
+    index_of_dealer = find_dealer(list_of_players)
+    print('The dealer is: ' + list_of_players[index_of_dealer].name)
     global_round.collect_and_distribute_money()
-    global_round.deal_hands()
+    global_round.deal_hands(index_of_dealer)
+    print('\nThe hands were dealt and the money was distributed.')
     print('The showcard is: ' + str(global_round.showcard))
     print('Player\'s hands are: ')
     for _player in list_of_players:
@@ -580,10 +578,6 @@ def play_global_round(list_of_players, current_lulo_price):
     print('Body: ' + str(global_round.bets['body']))
     print('Tail: ' + str(global_round.bets['tail']))
     print()
-
-    # We find who the dealer is
-    index_of_dealer = find_dealer(list_of_players)
-    print('The dealer is: ' + list_of_players[index_of_dealer].name)
 
     # Now we ask players if they want to play or fold.
     list_of_not_folded_players = []
