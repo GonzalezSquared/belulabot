@@ -1,5 +1,7 @@
 .vscode/
 globaltester.py
+globaltesterrandom.py
+output.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

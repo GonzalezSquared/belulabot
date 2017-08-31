@@ -193,7 +193,7 @@ def test_move_the_dealer1():
 
     player1.dealer_status = True
     list_of_players = [player1, player2, player3]
-    lapi.move_dealer(list_of_players)
+    lapi.move_dealer(list_of_players, None, None, False)
     assert player2.dealer_status
 
 def test_move_the_dealer2():
@@ -203,5 +203,5 @@ def test_move_the_dealer2():
 
     player3.dealer_status = True
     list_of_players = [player1, player2, player3]
-    lapi.move_dealer(list_of_players)
+    lapi.move_dealer(list_of_players, None, None, False)
     assert player1.dealer_status and not player3.dealer_status

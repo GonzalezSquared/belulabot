@@ -5,6 +5,7 @@ luloapi.py, a python implementation of the classic colombian game Lulo.
 
 To-Do:
     - Implement "el muerto"
+    - Implement a change in the lulo price.
 '''
 
 
@@ -164,6 +165,12 @@ def is_card_playable(card, hand, showcard, past_cards, round_type=None):
                 for _card in list_of_showcard_kind_cards:
                     is_the_best_card = (is_the_best_card 
                                         and card == compare_cards([card, _card], showcard))
+                if is_the_best_card:
+                    return True
+                if not is_the_best_card:
+                    return False
+                # Code above could be replaced by return is_the_best_card, but we
+                # prefer to be as explicit as we can.
         if round_type == 'tail':
             return True
         if round_type == None:
@@ -180,9 +187,9 @@ def is_card_playable(card, hand, showcard, past_cards, round_type=None):
                 playable_cards.append(_card)
         if playable_cards == []:
             # If no rh-like-card wins, then they all can be played.
-            print('No card affected!')
+            # print('No card affected!')
             playable_cards += list_of_rh_kind_cards
-            print('Playable cards: ' + str(playable_cards))
+            # print('Playable cards: ' + str(playable_cards))
 
         if card in playable_cards:
             return True
@@ -204,8 +211,9 @@ def is_card_playable(card, hand, showcard, past_cards, round_type=None):
     if list_of_rh_kind_cards == [] and list_of_showcard_kind_cards == []:
         return True
 
-def get_playable_cards(hand, showcard, rh_card, past_cards):
-    playable_cards = [card for card in hand if is_card_playable(card)]
+def get_playable_cards(hand, showcard, past_cards, round_type):
+    playable_cards = [card for card in hand if is_card_playable(card, hand,
+                      showcard, past_cards, round_type)]
     return playable_cards
 
 
@@ -220,16 +228,16 @@ class Player:
     To-do:
         - Implement the memory stuff
     '''
-    def __init__(self, _type=(None, None), _chips=5000):
+    def __init__(self, _type=(None, 'Player'), _chips=5000):
         self.chips = _chips
         self.dealer_status = False
         self.folded_status = False
         self.hand = []
         self.lulo_status = False
         self.memory_of_past_cards = []
-        # self.name = None
         self.right_to_dealer_status = False
         self.type = _type
+        self.name = self.type[1]
     
     def __repr__(self):
         return self.type[1]
@@ -273,10 +281,19 @@ class Player:
             '''
             None means random, so the device folds depending on some random number
             '''
-            if random.uniform(0,1) <= 0.5:
-                return True
-            else:
+            has_showcard_kind_cards = False
+            for _card in self.hand:
+                has_showcard_kind_cards = has_showcard_kind_cards or (_card.kind == gro.showcard)
+            if has_showcard_kind_cards:
                 return False
+            if not has_showcard_kind_cards:
+                if len(gro.list_of_folded_players) == len(gro.list_of_players) - 1:
+                    # It's the last player up, so why fold?
+                    return False
+                if random.uniform(0,1) <= 0.5:
+                    return True
+                else:
+                    return False
         if self.type[0] == 'human':
             print(self.type[1] + ', it is your turn.')
             print('The showcard is: ' + str(gro.showcard))
@@ -304,6 +321,10 @@ class Player:
             for card in self.hand:
                 if card.kind != gro.showcard:
                     list_of_cards_to_be_changed.append(card)
+            for _card in list_of_cards_to_be_changed:
+                index = self.hand.index(_card)
+                self.hand[index] = gro.deck.retrieve_card_at_random()
+                # print(self.name + ' changes ' + str(_card) + ' for ' + str(self.hand[index]))
 
         if self.type[0] == 'human':
             print(self.type[1] + ', you need to change cards.')
@@ -315,9 +336,9 @@ class Player:
             print('the list of cards you want to change are: ' + str(list_of_ints_in_input))
             list_of_cards_to_be_changed += list_of_ints_in_input
             for index in list_of_cards_to_be_changed:
-                print(index)
+                # print(index)
                 self.hand[index] = gro.deck.retrieve_card_at_random()
-                print(self.hand[index])
+                # print(self.hand[index])
 
         if self.type[0] == 'bot':
             bot = self.type[1]
@@ -346,10 +367,15 @@ class Player:
             print('Your hand is: ' + str(self.hand))
             print('Which card do you want to play?, write the index:')
             index = int(input())
+            if index not in [0, 1, 2]:
+                raise ValueError('card index must be between 0 and 2')
             while not is_card_playable(self.hand[index], self.hand, gro.showcard,
                                     list_of_played_cards, round_type):
-                print('You can\'t play that, write another index:')
+                print('You can\'t play that. The list of cards you can play is: ')
+                print(get_playable_cards(self.hand, gro.showcard, list_of_played_cards, round_type))
                 index = int(input())
+                if index not in [0, 1, 2]:
+                    raise ValueError('card index must be between 0 and 2')
             card = self.hand[index]
             self.hand.remove(card)
             return card
@@ -413,17 +439,13 @@ class Round:
         self.showcard = self.deck.retrieve_card_at_random()
         self.muerto = [self.deck.retrieve_card_at_random() for k in range(4)]
         self.is_there_muerto = True
+        self.list_of_folded_players = []
 
     def collect_money_from_lulo_players(self):
         '''
         This function iterates over the list of players and collects money from
-        those who were lulo-ed last round. If a player has no money to play a
-        lulo, he's outted.
+        those who were lulo-ed last round.
         '''
-        for _player in self.list_of_players:
-            if _player.chips < self.current_lulo_price:
-                self.list_of_players.remove(_player)
-
         all_collected_money = 0
         for _player in self.list_of_players:
             if _player.is_lulo():
@@ -431,7 +453,7 @@ class Round:
         if all_collected_money == 0:
             # Nobody ended being lulo-ed, so everyone should place a small amount
             for _player in self.list_of_players:
-                all_collected_money += _player.bet(int(0.5 * self.current_lulo_price))
+                all_collected_money += _player.bet(25) # this is subject to change, maybe a new variable
 
         return all_collected_money
 
@@ -469,25 +491,75 @@ class Round:
         for index in request:
             player_object.hand[index] = gro.deck.retrieve_card_at_random()
 
-def move_dealer(list_of_players):
+def find_dealer(list_of_players):
+    for _player in list_of_players:
+        if _player.is_dealer():
+            index_of_dealer = list_of_players.index(_player)
+    if len([p for p in list_of_players if p.is_dealer()]) != 1:
+        raise ValueError('There\'s more than one dealer or there\'s no dealer!')
+    return index_of_dealer
+
+def move_dealer(list_of_players, removed_player=None, index_of_removed_player=None, player_was_removed=False):
     '''
     This function grabs a list of players and moves the dealer one to 
     the right (i.e. from index k to (k+1) % m, where m is the amount of players).
     '''
-    index_of_dealer = None
+    if not player_was_removed:
+        index_of_dealer = find_dealer(list_of_players)
+        list_of_players[index_of_dealer].dealer_status = False
+        list_of_players[(index_of_dealer + 1) % len(list_of_players)].dealer_status = True
+    
+    if player_was_removed:
+        list_of_players.insert(index_of_removed_player, removed_player)
+        index_of_dealer = find_dealer(list_of_players)
+        list_of_players[index_of_dealer].dealer_status = False
+        if list_of_players[(index_of_dealer+1)%len(list_of_players)] == removed_player:
+            # The next one is to be removed, so we move 2 to the right
+            list_of_players[(index_of_dealer+2)%len(list_of_players)].dealer_status = True
+        else:
+            list_of_players[(index_of_dealer+1)%len(list_of_players)].dealer_status = True
+        list_of_players.remove(removed_player)
+
+def print_summary(list_of_players, list_of_winners):
+    print('The winners of this round are: ' + str(list_of_winners))
     for _player in list_of_players:
-        if _player.dealer_status == True:
-            index_of_dealer = list_of_players.index(_player)
-            _player.dealer_status = False
+        print()
+        print(_player.name + ' has ' + str(_player.chips) + ' chips.')
+        print(_player.name + '\'s lulo status: ' + str(_player.lulo_status))
+        print()
+
+def finish_round(list_of_players, list_of_winners, current_lulo_price):
+    # The round ends with the outting of those who don't have enough money to
+    # continue, the moving of the dealer and the emptying of everyone's hands.
+    player_was_removed = False
+    removed_player = None
+    index_of_removed_player = None
+    for _player in list_of_players:
+        if _player.chips < 2*current_lulo_price and _player.is_lulo():
+            print(_player.type[1] + ' doesn\'t have enough to continue. He\'s out!')
+            index_of_removed_player = list_of_players.index(_player)
+            list_of_players.remove(_player)
+            # We put up a flag, stating whether the dealer was removed or not
+            removed_player = _player
+            player_was_removed = True
+        elif _player.chips < current_lulo_price:
+            print(_player.type[1] + ' doesn\'t have enough to continue. He\'s out!')
+            index_of_removed_player = list_of_players.index(_player)
+            list_of_players.remove(_player)
+            removed_player = _player
+            player_was_removed = True
+    move_dealer(list_of_players, removed_player, index_of_removed_player, player_was_removed)
     
-    if index_of_dealer == None:
-        raise ValueError('There\'s no dealer!')
-    
-    new_list_of_players = list_of_players.copy()
-    new_list_of_players[(index_of_dealer + 1) % len(list_of_players)].dealer_status = True
-    return new_list_of_players
+    #
+    print('Round ended!, these are the balances: ')
+    print_summary(list_of_players, list_of_winners)
+
+    for _player in list_of_players:
+        _player.hand = []
+
 
 def play_global_round(list_of_players, current_lulo_price):
+    print('New round is starting!')
     global_round = Round(list_of_players, current_lulo_price)
     list_of_winners = []
 
@@ -495,13 +567,33 @@ def play_global_round(list_of_players, current_lulo_price):
     # are dealt.
     global_round.collect_and_distribute_money()
     global_round.deal_hands()
+    print('The showcard is: ' + str(global_round.showcard))
+    print('Player\'s hands are: ')
+    for _player in list_of_players:
+        print(_player.name + ': ' + str(_player.hand))
+        if len(_player.hand) != 3:
+            raise ValueError('A player\'s hand must contain 3 cards in the beginning of the round!')
+    print('The chip distribution is: ')
+    print('Head: ' + str(global_round.bets['head']))
+    print('Body: ' + str(global_round.bets['body']))
+    print('Tail: ' + str(global_round.bets['tail']))
+    print()
+
+    # We find who the dealer is
+    index_of_dealer = find_dealer(list_of_players)
 
     # Now we ask players if they want to play or fold.
     list_of_not_folded_players = []
-    for _player in list_of_players:
+    for _player in list_of_players[index_of_dealer+1:] + list_of_players[:index_of_dealer+1]:
         folded_status = _player.ask_for_fold(global_round)
         if not folded_status:
             list_of_not_folded_players.append(_player)
+        if folded_status:
+            print(_player.name + ' folded!')
+            global_round.list_of_folded_players.append(_player)
+            _player.hand = []
+    print('The list of players that did not fold is: ' + str(list_of_not_folded_players))
+    print()
     
     # If there's only one player, he wins it all.
     if len(list_of_not_folded_players) == 1:
@@ -509,21 +601,9 @@ def play_global_round(list_of_players, current_lulo_price):
         _player.recieve_money(global_round.bets['head'] 
                              + global_round.bets['body']
                              + global_round.bets['tail'])
-
-    # Now we ask players if they want to change their hand
-    for _player in list_of_not_folded_players:
-        _player.ask_for_card_change(global_round)
-    
-    # We find the index of the dealer (which can be optimized by putting this on
-    # the same loop as the one before).
-    index_of_dealer = None
-    for player in list_of_players:
-        if player.is_dealer():
-            index_of_dealer = list_of_players.index(player)
-
-    if index_of_dealer == None:
-        raise ValueError('No player was the dealer, WAT?!')
-
+        print(_player.name + ' is the only one that didn\'t fold, so he wins it all!')
+        finish_round(list_of_players, [_player], current_lulo_price)
+        return
 
     # We find the closest active player (to the right of the dealer) for it to
     # be the right hand.
@@ -538,6 +618,10 @@ def play_global_round(list_of_players, current_lulo_price):
     # Now we create a new list of players in playing order.
     list_of_players_in_p_order_head = (list_of_not_folded_players[index_of_rh_player:]
                                 + list_of_not_folded_players[:index_of_rh_player])
+    
+    # Now we ask players if they want to change their hand
+    for _player in list_of_players_in_p_order_head:
+        _player.ask_for_card_change(global_round)
     
     # Now we know who's starting the game. Now we start with the head.
     list_of_played_cards_head = []
@@ -561,7 +645,7 @@ def play_global_round(list_of_players, current_lulo_price):
     # Now we go to the body round, with the same procedure:
     list_of_players_in_p_order_body = (list_of_not_folded_players[index_of_winner_head:]
                                 + list_of_not_folded_players[:index_of_winner_head])
-    print('the new order of players is: ' + str(list_of_players_in_p_order_body))
+    # print('the new order of players is: ' + str(list_of_players_in_p_order_body))
     list_of_played_cards_body = []
     for _player in list_of_players_in_p_order_body:
         list_of_played_cards_body.append(_player.play_card(global_round, 
@@ -576,11 +660,11 @@ def play_global_round(list_of_players, current_lulo_price):
     print(winner_player_body.type[1] + ' wins the body!')
 
     # And, finally, the tail:
-    print('The winner of past round was ' + str(winner_player_body))
-    print('His index in the list ' + str(list_of_not_folded_players) + ' is ' + str(index_of_winner_body_in_original_list))
+    # print('The winner of past round was ' + str(winner_player_body))
+    # print('His index in the list ' + str(list_of_not_folded_players) + ' is ' + str(index_of_winner_body_in_original_list))
     list_of_players_in_p_order_tail = (list_of_not_folded_players[index_of_winner_body_in_original_list:]
                                 + list_of_not_folded_players[:index_of_winner_body_in_original_list])
-    print('the new order of players is: ' + str(list_of_players_in_p_order_tail))
+    # print('the new order of players is: ' + str(list_of_players_in_p_order_tail))
     list_of_played_cards_tail = []
     for _player in list_of_players_in_p_order_tail:
         list_of_played_cards_tail.append(_player.play_card(global_round, 
@@ -601,11 +685,18 @@ def play_global_round(list_of_players, current_lulo_price):
         if _player not in list_of_winners:
             _player.lulo_status = True
     
-    # Finally, we move the dealer to the next position
-    move_dealer(list_of_players)
+    # Finally, we move the dealer to the next position and out the players that can't afford next round
+    finish_round(list_of_players, list_of_winners, current_lulo_price)
 
-def game():
+def game(list_of_players, initial_lulo_price):
     '''
     This function is the real deal, it starts a game of Lulo.
+
+    It accepts a list of (fresh) players (i.e. none of them is the dealer yet) and plays
+    the global round until only one player is left.
     '''
-    pass
+    list_of_players[0].dealer_status = True
+    while len(list_of_players) > 1:
+        play_global_round(list_of_players, initial_lulo_price)
+    winner = list_of_players[0]
+    print(winner.name + 'is the winner!')
