@@ -359,7 +359,9 @@ class Player:
         gro = global_round_object
         if self.type[0] == 'random' or self.type[0] == None:
             playable_cards = get_playable_cards(self.hand, gro.showcard, list_of_played_cards, round_type)
-            return random.choice(playable_cards)
+            card = random.choice(playable_cards)
+            self.hand.remove(card)
+            return card
             # for card in self.hand:
             #     if is_card_playable(card, self.hand, gro.showcard, list_of_played_cards, round_type):
             #         self.hand.remove(card)
@@ -524,8 +526,18 @@ def print_summary(list_of_players, list_of_winners):
         print()
 
 def finish_round(list_of_players, list_of_winners, current_lulo_price):
+    '''
+    This function finishes the round by expelling those who don't have enough
+    money to continue, by printing summaries, by moving the dealer and by
+    cleaning everyone's hand.
+
+    To-do:
+        - What if there are two players to be expelled?
+        - Make a better expelling condition.
+    '''
     # The round ends with the outting of those who don't have enough money to
     # continue, the moving of the dealer and the emptying of everyone's hands.
+    print('Round ended!, these are the balances: ')
     player_was_removed = False
     removed_player = None
     index_of_removed_player = None
@@ -545,13 +557,11 @@ def finish_round(list_of_players, list_of_winners, current_lulo_price):
             player_was_removed = True
     move_dealer(list_of_players, removed_player, index_of_removed_player, player_was_removed)
     
-    #
-    print('Round ended!, these are the balances: ')
+    # We print a summary and we empty the player's hands.
     print_summary(list_of_players, list_of_winners)
 
     for _player in list_of_players:
         _player.hand = []
-
 
 def play_global_round(list_of_players, current_lulo_price):
     print('New round is starting!')
@@ -566,7 +576,7 @@ def play_global_round(list_of_players, current_lulo_price):
     print('The dealer is: ' + list_of_players[index_of_dealer].name)
     global_round.collect_and_distribute_money()
     global_round.deal_hands(index_of_dealer)
-    print('\nThe hands were dealt and the money was distributed.')
+    # print('\nThe hands were dealt and the money was distributed.')
     print('The showcard is: ' + str(global_round.showcard))
     print('Player\'s hands are: ')
     for _player in list_of_players:

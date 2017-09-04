@@ -205,3 +205,14 @@ def test_move_the_dealer2():
     list_of_players = [player1, player2, player3]
     lapi.move_dealer(list_of_players, None, None, False)
     assert player1.dealer_status and not player3.dealer_status
+
+def test_lulo_recolection():
+    player1 = lapi.Player()
+    player2 = lapi.Player()
+    player3 = lapi.Player()
+
+    player1.lulo_status = True
+    player2.lulo_status = True
+    gro = lapi.Round([player1, player2, player3], 100)
+    gro.collect_money_from_lulo_players()
+    assert player1.chips == 4900 and player2.chips == 4900
