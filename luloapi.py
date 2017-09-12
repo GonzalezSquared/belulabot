@@ -325,6 +325,14 @@ class Player:
         gro = global_round_object
         list_of_cards_to_be_changed = []
         if self.type[0] == None:
+            if gro.is_there_muerto:
+                if random.random() > 0.3:
+                    self.hand = gro.muerto.copy()
+                    discardable_cards = [c for c in gro.muerto if c.kind != gro.showcard.kind]
+                    self.hand.remove(random.choice(discardable_cards))
+                    gro.muerto = []
+                    gro.is_there_muerto = False
+                    return
             for card in self.hand:
                 if card.kind != gro.showcard.kind:
                     list_of_cards_to_be_changed.append(card)
@@ -337,20 +345,40 @@ class Player:
             print(self.type[1] + ', you need to change cards.')
             print('The showcard is: ' + str(gro.showcard))
             print('Your hand is: ' + str(self.hand))
+            if gro.is_there_muerto:
+                print('There is still muerto, do you want to grab it? (y/n): ')
+                answer = input()
+                if answer == 'y':
+                    self.hand = gro.muerto.copy()
+                    print('After grabbing the muerto, this are your four cards: ' + str(self.hand))
+                    print('Which card do you want to discard?, write its index: ')
+                    discard_index = input()
+                    self.hand.remove(self.hand[discard_index])
+                    gro.muerto = []
+                    gro.is_there_muerto = False
+                    return
+                else:
+                    pass
             print('Which cards do you want to change?, write their indexes: ')
             card_indexes = input()
             list_of_ints_in_input = [int(k) for k in card_indexes if k.isnumeric()]
             print('the list of cards you want to change are: ' + str(list_of_ints_in_input))
             list_of_cards_to_be_changed += list_of_ints_in_input
             for index in list_of_cards_to_be_changed:
-                # print(index)
                 self.hand[index] = gro.deck.retrieve_card_at_random()
-                # print(self.hand[index])
 
         if self.type[0] == 'bot':
             bot = self.type[1]
+            '''
+            Let's start a list of the things that should be implemented in the bot object:
+                -select_cards_for_change, which must account for the muerto (or lack thereof).
+                 It must return a list of cards to be changed.
+            '''
             list_of_cards_to_be_changed = bot.select_cards_for_change(gro)
-            # Same as above, how do we deal with the info flow?
+            for card in list_of_cards_to_be_changed:
+                index = self.hand.index(card)
+                self.hand[index] = gro.deck.retrieve_card_at_random()
+            
 
     def play_card(self, global_round_object, list_of_played_cards, round_type):
         '''
@@ -394,8 +422,7 @@ class Player:
         if self.type[0] == 'bot':
             bot = self.type[1]
             # How do we deal with the information flow towards the bot.
-            card = bot.play_card(self.hand[index], self.hand, gro.showcard,
-                                list_of_played_cards, round_type)
+            card = bot.play_card(self.hand, gro)
             if is_card_playable(self.hand[index], self.hand, gro.showcard,
                                 list_of_played_cards, round_type):
                 return bot.play_card(gro)
@@ -451,6 +478,9 @@ class Round:
         self.muerto = [self.deck.retrieve_card_at_random() for k in range(4)]
         self.is_there_muerto = True
         self.list_of_folded_players = []
+        self.list_of_played_cards_head = []
+        self.list_of_played_cards_body = []
+        self.list_of_played_cards_tail = []
 
     def collect_money_from_lulo_players(self):
         '''
