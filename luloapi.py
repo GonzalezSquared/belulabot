@@ -465,9 +465,12 @@ class Player:
             raise ValueError('The new lulo status should be a boolean!')
         self.lulo_status = new_lulo_status
 
-class Round:
+class GlobalRound:
     '''
     This are the auxiliar functions for the global round of each game.
+
+    To-Do:
+        - Rewrite this docstring.
     '''
     def __init__(self, _list_of_players, _current_lulo_price):
         self.list_of_players = _list_of_players
@@ -595,7 +598,7 @@ def finish_round(list_of_players, list_of_winners, current_lulo_price):
 
 def play_global_round(list_of_players, current_lulo_price):
     print('New round is starting!')
-    global_round = Round(list_of_players, current_lulo_price)
+    global_round = GlobalRound(list_of_players, current_lulo_price)
     list_of_winners = []
 
     # The round starts, the money is collected from past lulos and the hands

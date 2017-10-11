@@ -213,6 +213,6 @@ def test_lulo_recolection():
 
     player1.lulo_status = True
     player2.lulo_status = True
-    gro = lapi.Round([player1, player2, player3], 100)
+    gro = lapi.GlobalRound([player1, player2, player3], 100)
     gro.collect_money_from_lulo_players()
     assert player1.chips == 4900 and player2.chips == 4900
